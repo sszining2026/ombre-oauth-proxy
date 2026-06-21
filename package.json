@@ -1,0 +1,12 @@
+{
+  "name": "ombre-oauth-proxy",
+  "version": "1.0.0",
+  "description": "OAuth proxy for ombre-brain MCP server",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
