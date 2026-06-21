@@ -5,22 +5,19 @@ const url = require('url');
 const PORT = process.env.PORT || 3000;
 const OMBRE_URL = process.env.OMBRE_URL || 'https://ombre-brain-c3gy.onrender.com';
 const PROXY_TOKEN = process.env.PROXY_TOKEN || 'ombre-proxy-token';
-const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
+const BASE_URL = process.env.BASE_URL || 'https://ombre-oauth-proxy.onrender.com';
 
 function proxyRequest(req, res, targetUrl) {
-  const parsed = url.parse(targetUrl);
+  const parsed = new URL(targetUrl);
   const isHttps = parsed.protocol === 'https:';
   const lib = isHttps ? https : http;
 
   const options = {
     hostname: parsed.hostname,
     port: parsed.port || (isHttps ? 443 : 80),
-    path: parsed.path,
+    path: parsed.pathname + parsed.search,
     method: req.method,
-    headers: {
-      ...req.headers,
-      host: parsed.hostname,
-    },
+    headers: { ...req.headers, host: parsed.hostname },
   };
 
   const proxyReq = lib.request(options, (proxyRes) => {
@@ -38,11 +35,13 @@ function proxyRequest(req, res, targetUrl) {
 }
 
 const server = http.createServer((req, res) => {
-  const parsed = url.parse(req.url, true);
+  const parsed = new URL(req.url, `http://localhost:${PORT}`);
   const path = parsed.pathname;
 
+  console.log(`${req.method} ${path}`);
+
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, DELETE');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (req.method === 'OPTIONS') {
@@ -51,13 +50,26 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // OAuth discovery
+  if (path === '/.well-known/oauth-authorization-server') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      issuer: BASE_URL,
+      authorization_endpoint: `${BASE_URL}/oauth/authorize`,
+      token_endpoint: `${BASE_URL}/oauth/token`,
+      response_types_supported: ['code'],
+      grant_types_supported: ['authorization_code'],
+    }));
+    return;
+  }
+
+  // OAuth authorize
   if (path === '/oauth/authorize') {
-    const redirectUri = parsed.query.redirect_uri;
-    const state = parsed.query.state || '';
+    const redirectUri = parsed.searchParams.get('redirect_uri');
+    const state = parsed.searchParams.get('state') || '';
     if (redirectUri) {
-      const separator = redirectUri.includes('?') ? '&' : '?';
-      const redirectUrl = `${redirectUri}${separator}code=ombre-auth-code&state=${state}`;
-      res.writeHead(302, { Location: redirectUrl });
+      const sep = redirectUri.includes('?') ? '&' : '?';
+      res.writeHead(302, { Location: `${redirectUri}${sep}code=ombre-auth-code&state=${state}` });
       res.end();
     } else {
       res.writeHead(400);
@@ -66,6 +78,7 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // OAuth token
   if (path === '/oauth/token') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
@@ -76,6 +89,7 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // Proxy /mcp
   if (path === '/mcp' || path.startsWith('/mcp/')) {
     const targetUrl = `${OMBRE_URL}${path}${parsed.search || ''}`;
     proxyRequest(req, res, targetUrl);
