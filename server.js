@@ -52,16 +52,17 @@ const server = http.createServer((req, res) => {
 
   // OAuth discovery
   if (path === '/.well-known/oauth-authorization-server') {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({
-      issuer: BASE_URL,
-      authorization_endpoint: `${BASE_URL}/oauth/authorize`,
-      token_endpoint: `${BASE_URL}/oauth/token`,
-      response_types_supported: ['code'],
-      grant_types_supported: ['authorization_code'],
-    }));
-    return;
-  }
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({
+    issuer: BASE_URL,
+    authorization_endpoint: `${BASE_URL}/oauth/authorize`,
+    token_endpoint: `${BASE_URL}/oauth/token`,
+    registration_endpoint: `${BASE_URL}/oauth/register`,
+    response_types_supported: ['code'],
+    grant_types_supported: ['authorization_code'],
+  }));
+  return;
+}
 
   // OAuth authorize
   if (path === '/oauth/authorize') {
@@ -89,6 +90,18 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+// OAuth dynamic client registration
+if (path === '/oauth/register') {
+  res.writeHead(201, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({
+    client_id: 'ombre-claude-client',
+    client_secret: 'ombre-claude-secret',
+    redirect_uris: [],
+    grant_types: ['authorization_code'],
+    response_types: ['code'],
+  }));
+  return;
+}  
   // Proxy /mcp
   if (path === '/mcp' || path.startsWith('/mcp/')) {
     const targetUrl = `${OMBRE_URL}${path}${parsed.search || ''}`;
