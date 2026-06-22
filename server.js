@@ -12,12 +12,14 @@ function proxyRequest(req, res, targetUrl) {
   const isHttps = parsed.protocol === 'https:';
   const lib = isHttps ? https : http;
 
-  const options = {
+  const headers = { ...req.headers, host: parsed.hostname };
+delete headers.authorization;
+const options = {
   hostname: parsed.hostname,
   port: parsed.port || (isHttps ? 443 : 80),
   path: parsed.pathname + parsed.search,
   method: req.method,
-  headers: { ...req.headers, host: parsed.hostname, authorization: undefined },
+  headers: headers,
 };
 
   const proxyReq = lib.request(options, (proxyRes) => {
