@@ -12,8 +12,9 @@ function proxyRequest(req, res, targetUrl) {
   const isHttps = parsed.protocol === 'https:';
   const lib = isHttps ? https : http;
 
-  const headers = { ...req.headers, host: parsed.hostname };
+const headers = { ...req.headers, host: parsed.hostname };
 delete headers.authorization;
+headers['x-admin-token'] = process.env.OMBRE_ADMIN_TOKEN || '';
 const options = {
   hostname: parsed.hostname,
   port: parsed.port || (isHttps ? 443 : 80),
