@@ -50,6 +50,16 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+// OAuth protected resource metadata
+if (path === '/.well-known/oauth-protected-resource' || 
+    path.startsWith('/.well-known/oauth-protected-resource/')) {
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({
+    resource: BASE_URL,
+    authorization_servers: [BASE_URL],
+  }));
+  return;
+}  
   // OAuth discovery
   if (path === '/.well-known/oauth-authorization-server') {
   res.writeHead(200, { 'Content-Type': 'application/json' });
